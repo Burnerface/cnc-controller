@@ -1,74 +1,26 @@
-<template>
+﻿<template>
   <v-app-bar color="surface" elevation="2" height="56">
-    <!-- Logo -->
-    <v-app-bar-title class="text-primary font-weight-bold">
-      <v-icon icon="mdi-router" class="mr-2" />
-      GRBLDeck
-    </v-app-bar-title>
 
-    <!-- Sélecteur machine (centre) -->
-    <template #default>
-      <div class="d-flex align-center justify-center w-100">
-        <MachineSelector />
-      </div>
+    <template #prepend>
+      <span class="text-primary font-weight-bold ml-3 d-flex align-center">
+        <v-icon icon="mdi-router" class="mr-2" />
+        GRBLDeck
+      </span>
     </template>
 
-    <!-- Actions droite -->
+    <div class="d-flex align-center justify-center w-100">
+      <MachineSelector />
+    </div>
+
     <template #append>
-      <!-- Badge état connexion -->
-      <v-chip
-        :color="statusColor"
-        variant="tonal"
-        size="small"
-        class="mr-2"
-      >
+      <v-chip :color="statusColor" variant="tonal" size="small" class="mr-2">
         <v-icon start :icon="statusIcon" size="small" />
         {{ store.status.state }}
       </v-chip>
-
-      <!-- Connecter / Déconnecter -->
-      <v-btn
-        v-if="!store.status.connected"
-        color="primary"
-        variant="tonal"
-        size="small"
-        prepend-icon="mdi-lan-connect"
-        class="mr-1"
-        :disabled="!store.machineActiveId"
-        @click="store.connecter()"
-      >
-        Connecter
-      </v-btn>
-      <v-btn
-        v-else
-        color="error"
-        variant="tonal"
-        size="small"
-        prepend-icon="mdi-lan-disconnect"
-        class="mr-1"
-        @click="store.deconnecter()"
-      >
-        Déconnecter
-      </v-btn>
-
-      <!-- Stop urgence -->
-      <v-btn
-        color="error"
-        variant="flat"
-        size="small"
-        icon="mdi-stop-circle"
-        class="mr-2"
-        :disabled="!store.status.job.actif"
-        @click="store.stopper()"
-      />
-
-      <!-- Paramètres -->
-      <v-btn
-        icon="mdi-cog"
-        variant="text"
-        size="small"
-        @click="showSettings = true"
-      />
+      <v-btn v-if="!store.status.connected" color="primary" variant="tonal" size="small" prepend-icon="mdi-lan-connect" class="mr-1" :disabled="!store.machineActiveId" @click="store.connecter()">Connecter</v-btn>
+      <v-btn v-else color="error" variant="tonal" size="small" prepend-icon="mdi-lan-disconnect" class="mr-1" @click="store.deconnecter()">Déconnecter</v-btn>
+      <v-btn color="error" variant="flat" size="small" icon="mdi-stop-circle" class="mr-2" :disabled="!store.status.job.actif" @click="store.stopper()" />
+      <v-btn icon="mdi-cog" variant="text" size="small" @click="showSettings = true" />
     </template>
   </v-app-bar>
 </template>
