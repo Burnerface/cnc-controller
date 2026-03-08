@@ -1,46 +1,30 @@
 <template>
   <v-app theme="dark">
     <HeaderBar />
-
     <v-main class="bg-background">
       <v-container fluid class="pa-3">
         <v-row dense>
-          <!-- Colonne gauche : Position + Jog + Console -->
           <v-col cols="12" md="3">
             <v-row dense>
               <v-col cols="12">
-                <PositionCard />
+                <PositionCard @aller-zero-travail="allerZeroTravail" />
               </v-col>
-              <v-col cols="12">
-                <JogCard />
-              </v-col>
-              <v-col cols="12">
-                <ConsoleCard />
-              </v-col>
+              <v-col cols="12"><JogCard /></v-col>
+              <v-col cols="12"><ConsoleCard /></v-col>
             </v-row>
           </v-col>
-
-          <!-- Colonne centre : Visualiseur GCode -->
           <v-col cols="12" md="6">
-            <GCodeViewer />
+            <GCodeViewer ref="gcodeViewer" />
           </v-col>
-
-          <!-- Colonne droite : Fichiers + Caméra -->
           <v-col cols="12" md="3">
             <v-row dense>
-              <v-col cols="12">
-                <FileManager />
-              </v-col>
-              <v-col cols="12">
-                <CameraCard />
-              </v-col>
+              <v-col cols="12"><FileManager /></v-col>
+              <v-col cols="12"><CameraCard /></v-col>
             </v-row>
           </v-col>
         </v-row>
       </v-container>
     </v-main>
-
-    <!-- Dialogs globaux -->
     <SettingsDialog v-model="showSettings" />
     <MachineDialog v-model="showMachineDialog" />
   </v-app>
@@ -60,11 +44,18 @@ import SettingsDialog from './components/SettingsDialog.vue'
 import MachineDialog from './components/MachineDialog.vue'
 
 const store = useMachineStore()
-const showSettings = ref(false)
+const showSettings      = ref(false)
 const showMachineDialog = ref(false)
+const gcodeViewer       = ref(null)
 
 provide('showSettings', showSettings)
 provide('showMachineDialog', showMachineDialog)
+provide('gcodeViewer', gcodeViewer)
+
+// PositionCard → bouton "→ Zéro" → GCodeViewer.allerAuZeroTravail()
+function allerZeroTravail() {
+  gcodeViewer.value?.allerAuZeroTravail()
+}
 
 onMounted(() => {
   store.chargerMachines()
