@@ -1,0 +1,2190 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GRBLDeck Slicer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════
+   DESIGN SYSTEM — TOKENS
+═══════════════════════════════════════════ */
+:root {
+  --ff-ui: 'DM Sans', sans-serif;
+  --ff-mono: 'DM Mono', monospace;
+
+  /* Accent — laser orange chaud */
+  --accent:        #E8590C;
+  --accent-soft:   rgba(232,89,12,0.12);
+  --accent-glow:   rgba(232,89,12,0.30);
+  --accent-hover:  #F06A20;
+
+  /* Accent secondaire — CNC teal */
+  --teal:          #0BBFA8;
+  --teal-soft:     rgba(11,191,168,0.12);
+
+  /* Statuts */
+  --green:  #22C55E;
+  --yellow: #F59E0B;
+  --red:    #EF4444;
+
+  --radius-sm: 4px;
+  --radius:    7px;
+  --radius-lg: 10px;
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.18);
+  --shadow:    0 4px 16px rgba(0,0,0,.28);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,.45);
+}
+
+/* DARK THEME */
+[data-theme="dark"] {
+  --bg-base:    #1A1B1E;
+  --bg-panel:   #222327;
+  --bg-card:    #2A2B2F;
+  --bg-input:   #1A1B1E;
+  --bg-hover:   rgba(255,255,255,.05);
+  --bg-active:  rgba(255,255,255,.08);
+  --border:     rgba(255,255,255,.08);
+  --border-lit: rgba(255,255,255,.14);
+  --txt-0:      #F1F2F5;
+  --txt-1:      #A8AAB2;
+  --txt-2:      #5E6070;
+  --txt-inv:    #1A1B1E;
+  --canvas-bg:  #141517;
+  --grid-color: rgba(255,255,255,.04);
+  --grid-color2:rgba(255,255,255,.08);
+  --workbed-bg: #1E1F22;
+  --workbed-border: rgba(232,89,12,.3);
+}
+
+/* LIGHT THEME */
+[data-theme="light"] {
+  --bg-base:    #F0F0F2;
+  --bg-panel:   #FAFAFA;
+  --bg-card:    #FFFFFF;
+  --bg-input:   #F4F4F6;
+  --bg-hover:   rgba(0,0,0,.04);
+  --bg-active:  rgba(0,0,0,.07);
+  --border:     rgba(0,0,0,.09);
+  --border-lit: rgba(0,0,0,.16);
+  --txt-0:      #1A1B1E;
+  --txt-1:      #5E6070;
+  --txt-2:      #9EA0AC;
+  --txt-inv:    #FFFFFF;
+  --canvas-bg:  #E4E4E8;
+  --grid-color: rgba(0,0,0,.06);
+  --grid-color2:rgba(0,0,0,.10);
+  --workbed-bg: #F8F8FA;
+  --workbed-border: rgba(232,89,12,.4);
+}
+
+/* ═══════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  font-family: var(--ff-ui);
+  font-size: 13px;
+  background: var(--bg-base);
+  color: var(--txt-0);
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+  transition: background .2s, color .2s;
+}
+
+button { font-family: var(--ff-ui); cursor: pointer; border: none; outline: none; }
+input, select { font-family: var(--ff-mono); outline: none; }
+
+/* ═══════════════════════════════════════════
+   TOPBAR
+═══════════════════════════════════════════ */
+#topbar {
+  height: 52px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 200;
+}
+
+/* Logo */
+.tb-logo {
+  width: 200px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-right: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.tb-logo-icon {
+  width: 30px;
+  height: 30px;
+  background: var(--accent);
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 0 16px var(--accent-glow);
+}
+
+.tb-logo-icon svg { width: 18px; height: 18px; }
+
+.tb-logo-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+
+.tb-logo-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--txt-0);
+  letter-spacing: .02em;
+}
+
+.tb-logo-sub {
+  font-size: 10px;
+  color: var(--txt-2);
+  font-family: var(--ff-mono);
+  margin-top: 2px;
+}
+
+/* Tabs principal (workflow steps) */
+.tb-tabs {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 8px;
+  gap: 2px;
+}
+
+.tb-tab {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--txt-1);
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: all .15s;
+  position: relative;
+}
+
+.tb-tab:hover { background: var(--bg-hover); color: var(--txt-0); }
+
+.tb-tab.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.tb-tab .tab-num {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--txt-2);
+  font-family: var(--ff-mono);
+}
+.tb-tab.active .tab-num {
+  background: var(--accent);
+  color: white;
+}
+
+.tb-tab-arrow {
+  color: var(--txt-2);
+  font-size: 11px;
+  padding: 0 2px;
+}
+
+/* Actions droite */
+.tb-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+}
+
+/* Machine selector */
+.machine-select {
+  height: 34px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-lit);
+  border-radius: var(--radius);
+  color: var(--txt-0);
+  font-size: 12.5px;
+  padding: 0 10px 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all .15s;
+  min-width: 160px;
+}
+
+.machine-select:hover { border-color: var(--accent); }
+
+.machine-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  flex-shrink: 0;
+}
+
+.machine-name { flex: 1; font-size: 12.5px; color: var(--txt-0); }
+.machine-port { font-size: 10px; color: var(--txt-2); font-family: var(--ff-mono); }
+
+/* Theme toggle */
+.theme-toggle {
+  width: 34px; height: 34px;
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--txt-1);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  transition: all .15s;
+}
+.theme-toggle:hover { border-color: var(--border-lit); color: var(--txt-0); }
+
+/* Slice button — CTA principal */
+.btn-slice {
+  height: 36px;
+  padding: 0 22px;
+  background: var(--accent);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all .15s;
+  box-shadow: 0 0 18px var(--accent-glow);
+  letter-spacing: .02em;
+}
+.btn-slice:hover {
+  background: var(--accent-hover);
+  box-shadow: 0 0 26px var(--accent-glow);
+  transform: translateY(-1px);
+}
+
+.btn-send {
+  height: 36px;
+  padding: 0 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-lit);
+  color: var(--txt-0);
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all .15s;
+}
+.btn-send:hover { border-color: var(--teal); color: var(--teal); }
+
+/* ═══════════════════════════════════════════
+   LAYOUT PRINCIPAL
+═══════════════════════════════════════════ */
+#app-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════
+   PANNEAU GAUCHE — Objets + Matériaux
+   (inspiré Bambu: liste plateau + filament)
+═══════════════════════════════════════════ */
+#panel-left {
+  width: 220px;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* Toolbar import */
+.import-bar {
+  padding: 10px;
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.import-btn {
+  flex: 1;
+  height: 32px;
+  background: var(--accent-soft);
+  border: 1px solid rgba(232,89,12,.25);
+  color: var(--accent);
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all .15s;
+}
+.import-btn:hover { background: var(--accent); color: white; }
+
+.import-btn-sm {
+  width: 32px;
+  height: 32px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--txt-1);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: all .15s;
+}
+.import-btn-sm:hover { border-color: var(--border-lit); color: var(--txt-0); }
+
+/* Section header */
+.section-hd {
+  padding: 10px 12px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+  color: var(--txt-2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Object list */
+.obj-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 8px 8px;
+}
+
+.obj-list::-webkit-scrollbar { width: 3px; }
+.obj-list::-webkit-scrollbar-thumb { background: var(--border-lit); border-radius: 4px; }
+
+.obj-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all .12s;
+  border: 1px solid transparent;
+  margin-bottom: 2px;
+}
+.obj-item:hover { background: var(--bg-hover); }
+.obj-item.selected {
+  background: var(--accent-soft);
+  border-color: rgba(232,89,12,.2);
+}
+
+.obj-thumb {
+  width: 32px;
+  height: 32px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 14px;
+}
+
+.obj-info { flex: 1; min-width: 0; }
+
+.obj-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--txt-0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.obj-meta {
+  font-size: 10px;
+  color: var(--txt-2);
+  font-family: var(--ff-mono);
+  margin-top: 1px;
+}
+
+.obj-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity .15s;
+}
+.obj-item:hover .obj-actions { opacity: 1; }
+
+.obj-act-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  background: none;
+  color: var(--txt-2);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .12s;
+}
+.obj-act-btn:hover { background: var(--bg-active); color: var(--txt-0); }
+
+/* Layers section */
+.layers-section {
+  border-top: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.layer-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 12px;
+  margin: 0 8px 2px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all .12s;
+}
+.layer-item:hover { background: var(--bg-hover); }
+.layer-item.active {
+  background: var(--bg-card);
+  border-color: var(--border);
+}
+
+.layer-color {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.layer-label {
+  flex: 1;
+  font-size: 11.5px;
+  color: var(--txt-0);
+  font-weight: 500;
+}
+
+.layer-badge {
+  font-size: 9px;
+  font-family: var(--ff-mono);
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.layer-badge.fill  { background: rgba(232,89,12,.15); color: var(--accent); }
+.layer-badge.line  { background: rgba(11,191,168,.15); color: var(--teal); }
+.layer-badge.cut   { background: rgba(239,68,68,.15);  color: var(--red); }
+.layer-badge.score { background: rgba(245,158,11,.15); color: var(--yellow); }
+
+/* ═══════════════════════════════════════════
+   CENTRE — Canvas + Toolbar outils
+═══════════════════════════════════════════ */
+#center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Toolbar outils (horizontal, sous topbar) */
+#tools-bar {
+  height: 40px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.tool-grp {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 10px;
+  margin-right: 4px;
+  border-right: 1px solid var(--border);
+}
+.tool-grp:last-child { border-right: none; }
+
+.tool-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--txt-1);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .12s;
+  position: relative;
+}
+.tool-btn:hover { background: var(--bg-hover); color: var(--txt-0); }
+.tool-btn.active { background: var(--accent-soft); color: var(--accent); }
+
+.tool-btn[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-card);
+  border: 1px solid var(--border-lit);
+  color: var(--txt-0);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  z-index: 1000;
+  pointer-events: none;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Transform inputs */
+.tb-coords {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+}
+
+.coord-field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 8px;
+  height: 28px;
+}
+
+.coord-lbl {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--txt-2);
+  font-family: var(--ff-mono);
+  min-width: 10px;
+}
+
+.coord-inp {
+  width: 54px;
+  background: none;
+  border: none;
+  color: var(--txt-0);
+  font-size: 11.5px;
+  text-align: right;
+}
+
+.coord-unit { font-size: 10px; color: var(--txt-2); }
+
+.tb-lock {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--txt-2);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.tb-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.zoom-display {
+  font-family: var(--ff-mono);
+  font-size: 11px;
+  color: var(--txt-1);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  min-width: 54px;
+  text-align: center;
+  cursor: pointer;
+}
+.zoom-display:hover { border-color: var(--border-lit); }
+
+/* Canvas wrapper */
+#canvas-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(var(--grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px),
+    linear-gradient(var(--grid-color2) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-color2) 1px, transparent 1px),
+    var(--canvas-bg);
+  background-size: 10px 10px, 10px 10px, 50px 50px, 50px 50px;
+}
+
+#canvas-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Rulers */
+.ruler-h, .ruler-v {
+  position: absolute;
+  background: var(--bg-panel);
+  border-color: var(--border);
+  z-index: 10;
+}
+.ruler-h { top: 0; left: 18px; right: 0; height: 18px; border-bottom: 1px solid var(--border); }
+.ruler-v { top: 18px; left: 0; bottom: 0; width: 18px; border-right: 1px solid var(--border); }
+.ruler-corner {
+  position: absolute;
+  top: 0; left: 0;
+  width: 18px; height: 18px;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  z-index: 11;
+}
+
+/* Bed info overlay */
+.bed-label {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 10.5px;
+  color: var(--txt-2);
+  font-family: var(--ff-mono);
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Zoom controls */
+.zoom-fab {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  z-index: 10;
+}
+
+.zoom-fab-btn {
+  width: 32px;
+  height: 32px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--txt-1);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all .12s;
+  box-shadow: var(--shadow-sm);
+}
+.zoom-fab-btn:hover { border-color: var(--border-lit); color: var(--txt-0); }
+
+.view-fab {
+  position: absolute;
+  bottom: 16px;
+  left: 34px;
+  display: flex;
+  gap: 4px;
+  z-index: 10;
+}
+.view-fab-btn {
+  height: 28px;
+  padding: 0 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--txt-1);
+  font-size: 11.5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all .12s;
+  box-shadow: var(--shadow-sm);
+}
+.view-fab-btn:hover { border-color: var(--border-lit); color: var(--txt-0); }
+.view-fab-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+/* ═══════════════════════════════════════════
+   PANNEAU DROIT — Paramètres process
+   (inspiré Bambu: Machine / Matériau / Process)
+═══════════════════════════════════════════ */
+#panel-right {
+  width: 260px;
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* Accordion sections */
+.acc-section {
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.acc-header {
+  height: 40px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: background .12s;
+  background: none;
+  width: 100%;
+  border: none;
+  color: var(--txt-0);
+}
+.acc-header:hover { background: var(--bg-hover); }
+
+.acc-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.acc-icon.machine { background: rgba(74,144,226,.15); color: #4A90E2; }
+.acc-icon.material { background: rgba(11,191,168,.15); color: var(--teal); }
+.acc-icon.process  { background: rgba(232,89,12,.15); color: var(--accent); }
+
+.acc-title {
+  flex: 1;
+  text-align: left;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--txt-0);
+}
+
+.acc-value {
+  font-size: 11px;
+  color: var(--txt-2);
+  font-family: var(--ff-mono);
+}
+
+.acc-arrow {
+  font-size: 10px;
+  color: var(--txt-2);
+  transition: transform .2s;
+}
+.acc-section.open .acc-arrow { transform: rotate(180deg); }
+
+.acc-body {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height .25s ease;
+  background: var(--bg-card);
+}
+.acc-section.open .acc-body { max-height: 1000px; }
+
+/* Contenu accordion */
+.acc-content { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.field-label {
+  font-size: 11.5px;
+  color: var(--txt-1);
+  flex: 1;
+}
+
+.field-input {
+  height: 28px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--txt-0);
+  font-size: 12px;
+  padding: 0 8px;
+  width: 90px;
+  transition: border-color .12s;
+}
+.field-input:focus { border-color: var(--accent); }
+
+.field-select {
+  height: 28px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--txt-0);
+  font-size: 12px;
+  padding: 0 6px;
+  flex: 1;
+  cursor: pointer;
+}
+
+.field-unit {
+  font-size: 10.5px;
+  color: var(--txt-2);
+  font-family: var(--ff-mono);
+  min-width: 24px;
+}
+
+/* Slider avec valeur */
+.slider-field { display: flex; flex-direction: column; gap: 5px; }
+
+.slider-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.slider-name { font-size: 11.5px; color: var(--txt-1); }
+.slider-val  { font-size: 12px; color: var(--txt-0); font-family: var(--ff-mono); font-weight: 500; }
+
+input[type="range"] {
+  width: 100%;
+  height: 4px;
+  -webkit-appearance: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: var(--border-lit);
+}
+input[type="range"].s-power {
+  background: linear-gradient(to right, var(--accent) 0%, var(--accent) var(--p, 75%), var(--border-lit) var(--p, 75%));
+}
+input[type="range"].s-speed {
+  background: linear-gradient(to right, #4A90E2 0%, #4A90E2 var(--p, 50%), var(--border-lit) var(--p, 50%));
+}
+input[type="range"].s-freq {
+  background: linear-gradient(to right, var(--teal) 0%, var(--teal) var(--p, 40%), var(--border-lit) var(--p, 40%));
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--txt-0);
+  box-shadow: 0 1px 5px rgba(0,0,0,.4);
+  cursor: pointer;
+  border: 2px solid var(--bg-card);
+}
+
+/* Mode selector chips */
+.mode-chips {
+  display: flex;
+  gap: 4px;
+}
+
+.mode-chip {
+  flex: 1;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--txt-1);
+  font-size: 11px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all .12s;
+}
+.mode-chip:hover { border-color: var(--border-lit); color: var(--txt-0); }
+.mode-chip.active.fill  { background: rgba(232,89,12,.15); border-color: var(--accent); color: var(--accent); }
+.mode-chip.active.line  { background: rgba(11,191,168,.15); border-color: var(--teal); color: var(--teal); }
+.mode-chip.active.cut   { background: rgba(239,68,68,.15); border-color: var(--red); color: var(--red); }
+
+/* Material preset chips */
+.mat-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.mat-chip {
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--txt-1);
+  cursor: pointer;
+  transition: all .12s;
+}
+.mat-chip:hover { border-color: var(--border-lit); color: var(--txt-0); }
+.mat-chip.active { background: var(--teal-soft); border-color: var(--teal); color: var(--teal); }
+
+/* Passes counter */
+.passes-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pass-btn {
+  width: 28px; height: 28px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--txt-0);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all .12s;
+}
+.pass-btn:hover { border-color: var(--border-lit); }
+.pass-count { flex: 1; text-align: center; font-size: 16px; font-weight: 700; color: var(--txt-0); }
+
+/* Separator */
+.acc-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+/* Bottom panel: GCode preview + Envoyer */
+.gcode-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.gcode-header {
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+
+.gcode-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--txt-2);
+  letter-spacing: .10em;
+  text-transform: uppercase;
+}
+
+.gcode-stats {
+  display: flex;
+  gap: 10px;
+}
+
+.gcode-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--txt-0);
+  font-family: var(--ff-mono);
+}
+
+.stat-lbl {
+  font-size: 9px;
+  color: var(--txt-2);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.gcode-box {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  background: var(--bg-base);
+  font-family: var(--ff-mono);
+  font-size: 10.5px;
+  line-height: 1.8;
+}
+
+.gcode-box::-webkit-scrollbar { width: 3px; }
+.gcode-box::-webkit-scrollbar-thumb { background: var(--border-lit); border-radius: 4px; }
+
+.gc-line { display: flex; gap: 10px; }
+.gc-n { color: var(--txt-2); min-width: 26px; text-align: right; }
+.gc-cmd { color: #4A90E2; font-weight: 500; }
+.gc-arg { color: var(--txt-1); }
+.gc-comment { color: var(--txt-2); }
+.gc-highlight .gc-cmd { color: var(--accent); }
+
+.send-panel {
+  padding: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.send-target {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.send-target-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  flex-shrink: 0;
+}
+
+.send-target-info { flex: 1; }
+.send-target-name { font-size: 12px; font-weight: 500; color: var(--txt-0); }
+.send-target-url  { font-size: 10px; color: var(--txt-2); font-family: var(--ff-mono); }
+
+.btn-send-full {
+  height: 38px;
+  background: var(--accent);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all .15s;
+  box-shadow: 0 0 18px var(--accent-glow);
+}
+.btn-send-full:hover {
+  background: var(--accent-hover);
+  box-shadow: 0 0 26px var(--accent-glow);
+  transform: translateY(-1px);
+}
+
+/* ═══════════════════════════════════════════
+   STATUS BAR
+═══════════════════════════════════════════ */
+#statusbar {
+  height: 24px;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 16px;
+  flex-shrink: 0;
+  font-size: 10.5px;
+  color: var(--txt-2);
+  font-family: var(--ff-mono);
+}
+
+.sb-item { display: flex; align-items: center; gap: 5px; }
+.sb-sep  { width: 1px; height: 14px; background: var(--border); }
+.sb-right { margin-left: auto; display: flex; gap: 14px; }
+.sb-dot { width: 6px; height: 6px; border-radius: 50%; }
+.sb-dot.ok   { background: var(--green); box-shadow: 0 0 5px var(--green); }
+.sb-dot.warn { background: var(--yellow); }
+
+/* ═══════════════════════════════════════════
+   CONTEXT MENU
+═══════════════════════════════════════════ */
+#ctx-menu {
+  position: fixed;
+  background: var(--bg-card);
+  border: 1px solid var(--border-lit);
+  border-radius: var(--radius-lg);
+  padding: 5px;
+  box-shadow: var(--shadow-lg);
+  z-index: 9999;
+  display: none;
+  min-width: 180px;
+}
+
+.ctx-item {
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  color: var(--txt-1);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  transition: all .1s;
+}
+.ctx-item:hover { background: var(--bg-hover); color: var(--txt-0); }
+.ctx-item.danger:hover { background: rgba(239,68,68,.1); color: var(--red); }
+.ctx-item .ctx-icon { font-size: 13px; width: 16px; text-align: center; }
+.ctx-item .ctx-ks { margin-left: auto; font-size: 10px; color: var(--txt-2); font-family: var(--ff-mono); }
+.ctx-sep { height: 1px; background: var(--border); margin: 4px 0; }
+
+/* ═══════════════════════════════════════════
+   ANIMATIONS
+═══════════════════════════════════════════ */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+#panel-left, #panel-right { animation: fadeIn .25s ease both; }
+#panel-right { animation-delay: .05s; }
+
+/* Drag over */
+.drag-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(232,89,12,.07);
+  border: 2px dashed var(--accent);
+  border-radius: var(--radius-lg);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  pointer-events: none;
+}
+.drag-overlay.show { display: flex; }
+.drag-msg {
+  background: var(--bg-card);
+  border: 1px solid var(--border-lit);
+  border-radius: var(--radius-lg);
+  padding: 24px 40px;
+  text-align: center;
+}
+.drag-msg-icon { font-size: 36px; margin-bottom: 10px; }
+.drag-msg-text { font-size: 15px; font-weight: 600; color: var(--txt-0); }
+.drag-msg-sub { font-size: 12px; color: var(--txt-2); margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ TOPBAR ═══════════ -->
+<div id="topbar">
+  <!-- Logo -->
+  <div class="tb-logo">
+    <div class="tb-logo-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+        <path d="M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/>
+      </svg>
+    </div>
+    <div class="tb-logo-text">
+      <span class="tb-logo-name">GRBLDeck</span>
+      <span class="tb-logo-sub">Slicer v0.1</span>
+    </div>
+  </div>
+
+  <!-- Steps workflow -->
+  <div class="tb-tabs">
+    <button class="tb-tab active" onclick="setTab(this)">
+      <span class="tab-num">1</span>
+      Préparer
+    </button>
+    <span class="tb-tab-arrow">›</span>
+    <button class="tb-tab" onclick="setTab(this)">
+      <span class="tab-num">2</span>
+      Paramétrer
+    </button>
+    <span class="tb-tab-arrow">›</span>
+    <button class="tb-tab" onclick="setTab(this)">
+      <span class="tab-num">3</span>
+      Générer
+    </button>
+    <span class="tb-tab-arrow">›</span>
+    <button class="tb-tab" onclick="setTab(this)">
+      <span class="tab-num">4</span>
+      Envoyer
+    </button>
+  </div>
+
+  <!-- Actions droite -->
+  <div class="tb-actions">
+    <!-- Machine connectée -->
+    <div class="machine-select" onclick="showMachinePicker()">
+      <div class="machine-dot"></div>
+      <div class="machine-info" style="flex:1">
+        <div class="machine-name">Laser Pro 40W</div>
+        <div class="machine-port">COM4 · 115200</div>
+      </div>
+      <span style="color:var(--txt-2);font-size:11px">▾</span>
+    </div>
+
+    <button class="theme-toggle" onclick="toggleTheme()" title="Changer le thème">🌙</button>
+
+    <button class="btn-send" onclick="generateGcode()">
+      ⚡ Générer GCode
+    </button>
+
+    <button class="btn-slice" onclick="sendToGRBLDeck()">
+      ▶ Envoyer vers GRBLDeck
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════ BODY ═══════════ -->
+<div id="app-body">
+
+  <!-- ══ PANNEAU GAUCHE ══ -->
+  <div id="panel-left">
+    <!-- Import -->
+    <div class="import-bar">
+      <button class="import-btn" onclick="importFile()">
+        <span>＋</span> Importer
+      </button>
+      <button class="import-btn-sm" title="Texte">T</button>
+      <button class="import-btn-sm" title="Forme">◻</button>
+    </div>
+
+    <!-- Liste objets -->
+    <div class="section-hd">
+      Objets sur le plateau
+      <span style="color:var(--txt-0);font-size:11px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-family:var(--ff-mono)">3</span>
+    </div>
+
+    <div class="obj-list" id="obj-list">
+      <!-- Objet 1 -->
+      <div class="obj-item selected" onclick="selectObj(this)">
+        <div class="obj-thumb">🖼</div>
+        <div class="obj-info">
+          <div class="obj-name">logo_entreprise.svg</div>
+          <div class="obj-meta">120 × 80 mm</div>
+        </div>
+        <div class="obj-actions">
+          <button class="obj-act-btn" title="Dupliquer">⧉</button>
+          <button class="obj-act-btn" title="Supprimer">✕</button>
+        </div>
+      </div>
+
+      <!-- Objet 2 -->
+      <div class="obj-item" onclick="selectObj(this)">
+        <div class="obj-thumb">📐</div>
+        <div class="obj-info">
+          <div class="obj-name">boite_600x400.dxf</div>
+          <div class="obj-meta">600 × 400 mm</div>
+        </div>
+        <div class="obj-actions">
+          <button class="obj-act-btn">⧉</button>
+          <button class="obj-act-btn">✕</button>
+        </div>
+      </div>
+
+      <!-- Objet 3 -->
+      <div class="obj-item" onclick="selectObj(this)">
+        <div class="obj-thumb">✏️</div>
+        <div class="obj-info">
+          <div class="obj-name">texte_gravure</div>
+          <div class="obj-meta">200 × 30 mm</div>
+        </div>
+        <div class="obj-actions">
+          <button class="obj-act-btn">⧉</button>
+          <button class="obj-act-btn">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Couches / layers -->
+    <div class="layers-section">
+      <div class="section-hd">
+        Couches de traitement
+        <button class="obj-act-btn" style="opacity:1;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;width:20px;height:20px">＋</button>
+      </div>
+
+      <div class="layer-item active" onclick="selectLayer(this)">
+        <div class="layer-color" style="background:#E8590C"></div>
+        <div class="layer-label">Gravure logo</div>
+        <span class="layer-badge fill">FILL</span>
+      </div>
+
+      <div class="layer-item" onclick="selectLayer(this)">
+        <div class="layer-color" style="background:#0BBFA8"></div>
+        <div class="layer-label">Score pli</div>
+        <span class="layer-badge score">SCORE</span>
+      </div>
+
+      <div class="layer-item" onclick="selectLayer(this)">
+        <div class="layer-color" style="background:#EF4444"></div>
+        <div class="layer-label">Découpe ext.</div>
+        <span class="layer-badge cut">CUT</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ CENTRE — Canvas ══ -->
+  <div id="center">
+    <!-- Toolbar outils -->
+    <div id="tools-bar">
+      <!-- Sélection & édition -->
+      <div class="tool-grp">
+        <button class="tool-btn active" id="tool-select" title="Sélectionner" onclick="setTool('select',this)">↖</button>
+        <button class="tool-btn" id="tool-node" title="Éditer les nœuds" onclick="setTool('node',this)">⬡</button>
+      </div>
+
+      <!-- Formes -->
+      <div class="tool-grp">
+        <button class="tool-btn" title="Rectangle" onclick="setTool('rect',this)">▭</button>
+        <button class="tool-btn" title="Ellipse" onclick="setTool('circle',this)">○</button>
+        <button class="tool-btn" title="Ligne" onclick="setTool('line',this)">╱</button>
+        <button class="tool-btn" title="Polygone" onclick="setTool('poly',this)">⬠</button>
+        <button class="tool-btn" title="Texte" onclick="setTool('text',this)">T</button>
+      </div>
+
+      <!-- Edition -->
+      <div class="tool-grp">
+        <button class="tool-btn" title="Annuler" onclick="canvas.undo ? canvas.undo() : null">↩</button>
+        <button class="tool-btn" title="Refaire">↪</button>
+        <button class="tool-btn" title="Grouper">⊡</button>
+        <button class="tool-btn" title="Aligner">⊞</button>
+        <button class="tool-btn" title="Booléen union">⊕</button>
+        <button class="tool-btn" title="Booléen soustraction">⊖</button>
+      </div>
+
+      <!-- Coords objet sélectionné -->
+      <div class="tb-coords">
+        <div class="coord-field">
+          <span class="coord-lbl">X</span>
+          <input class="coord-inp" id="inp-x" type="number" value="40.00" onchange="updateCoord()"/>
+          <span class="coord-unit">mm</span>
+        </div>
+        <div class="coord-field">
+          <span class="coord-lbl">Y</span>
+          <input class="coord-inp" id="inp-y" type="number" value="30.00" onchange="updateCoord()"/>
+          <span class="coord-unit">mm</span>
+        </div>
+        <div class="tb-lock" onclick="toggleLock(this)" title="Proportions">🔒</div>
+        <div class="coord-field">
+          <span class="coord-lbl">W</span>
+          <input class="coord-inp" id="inp-w" type="number" value="120.00" onchange="updateCoord()"/>
+          <span class="coord-unit">mm</span>
+        </div>
+        <div class="coord-field">
+          <span class="coord-lbl">H</span>
+          <input class="coord-inp" id="inp-h" type="number" value="80.00" onchange="updateCoord()"/>
+          <span class="coord-unit">mm</span>
+        </div>
+        <div class="coord-field">
+          <span class="coord-lbl">∠</span>
+          <input class="coord-inp" id="inp-r" type="number" value="0" onchange="updateCoord()"/>
+          <span class="coord-unit">°</span>
+        </div>
+      </div>
+
+      <!-- Droite: zoom + vue -->
+      <div class="tb-right">
+        <button class="tool-btn" title="Zoom ajusté" onclick="fitView()">⊡</button>
+        <div class="zoom-display" id="zoom-display" onclick="resetZoom()">100%</div>
+      </div>
+    </div>
+
+    <!-- Canvas -->
+    <div id="canvas-wrap"
+      ondragover="event.preventDefault(); document.querySelector('.drag-overlay').classList.add('show')"
+      ondragleave="document.querySelector('.drag-overlay').classList.remove('show')"
+      ondrop="handleDrop(event)">
+
+      <!-- Rulers -->
+      <div class="ruler-corner"></div>
+      <div class="ruler-h" id="ruler-h"></div>
+      <div class="ruler-v" id="ruler-v"></div>
+
+      <!-- Fabric canvas container -->
+      <div id="canvas-container">
+        <canvas id="main-canvas"></canvas>
+      </div>
+
+      <!-- Drag overlay -->
+      <div class="drag-overlay">
+        <div class="drag-msg">
+          <div class="drag-msg-icon">📂</div>
+          <div class="drag-msg-text">Déposer les fichiers ici</div>
+          <div class="drag-msg-sub">SVG, DXF, PNG, JPG, PDF</div>
+        </div>
+      </div>
+
+      <!-- Info bed -->
+      <div class="bed-label" id="bed-label">Plateau : 600 × 400 mm</div>
+
+      <!-- Zoom FAB -->
+      <div class="zoom-fab">
+        <button class="zoom-fab-btn" onclick="zoomIn()">＋</button>
+        <button class="zoom-fab-btn" onclick="zoomOut()">－</button>
+        <button class="zoom-fab-btn" onclick="fitView()" title="Fit" style="font-size:12px">⊡</button>
+      </div>
+
+      <!-- Vue modes -->
+      <div class="view-fab">
+        <button class="view-fab-btn active" onclick="setView('design',this)">🎨 Design</button>
+        <button class="view-fab-btn" onclick="setView('preview',this)">👁 Aperçu laser</button>
+        <button class="view-fab-btn" onclick="setView('gcode',this)">⚡ Parcours GCode</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PANNEAU DROIT ══ -->
+  <div id="panel-right">
+
+    <!-- 1. Machine -->
+    <div class="acc-section open">
+      <button class="acc-header" onclick="toggleAcc(this.parentElement)">
+        <div class="acc-icon machine">⚙</div>
+        <span class="acc-title">Machine</span>
+        <span class="acc-value">Laser 40W</span>
+        <span class="acc-arrow">▾</span>
+      </button>
+      <div class="acc-body">
+        <div class="acc-content">
+          <div class="field-row">
+            <span class="field-label">Type</span>
+            <select class="field-select">
+              <option selected>Laser CO₂</option>
+              <option>Laser diode</option>
+              <option>CNC fraisage</option>
+              <option>Laser + CNC</option>
+            </select>
+          </div>
+          <div class="field-row">
+            <span class="field-label">Largeur lit</span>
+            <input class="field-input" type="number" value="600"/>
+            <span class="field-unit">mm</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">Hauteur lit</span>
+            <input class="field-input" type="number" value="400"/>
+            <span class="field-unit">mm</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">Origine</span>
+            <select class="field-select">
+              <option>Avant-gauche</option>
+              <option>Centre</option>
+              <option>Avant-droit</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Matériau -->
+    <div class="acc-section open">
+      <button class="acc-header" onclick="toggleAcc(this.parentElement)">
+        <div class="acc-icon material">🪵</div>
+        <span class="acc-title">Matériau</span>
+        <span class="acc-value">Bois 3mm</span>
+        <span class="acc-arrow">▾</span>
+      </button>
+      <div class="acc-body">
+        <div class="acc-content">
+          <div class="mat-presets">
+            <button class="mat-chip active" onclick="selectMat(this,'Bois 3mm')">Bois 3mm</button>
+            <button class="mat-chip" onclick="selectMat(this,'Acry 3mm')">Acrylique</button>
+            <button class="mat-chip" onclick="selectMat(this,'Carton')">Carton</button>
+            <button class="mat-chip" onclick="selectMat(this,'Cuir')">Cuir</button>
+            <button class="mat-chip" onclick="selectMat(this,'Perso')">+ Perso</button>
+          </div>
+          <div class="acc-sep"></div>
+          <div class="field-row">
+            <span class="field-label">Épaisseur</span>
+            <input class="field-input" type="number" value="3"/>
+            <span class="field-unit">mm</span>
+          </div>
+          <div class="field-row">
+            <span class="field-label">Focal. Z</span>
+            <input class="field-input" type="number" value="0"/>
+            <span class="field-unit">mm</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Process laser -->
+    <div class="acc-section open">
+      <button class="acc-header" onclick="toggleAcc(this.parentElement)">
+        <div class="acc-icon process">🔥</div>
+        <span class="acc-title">Process — Gravure logo</span>
+        <span class="acc-arrow">▾</span>
+      </button>
+      <div class="acc-body">
+        <div class="acc-content">
+          <!-- Mode -->
+          <div class="field-row" style="align-items:flex-start;flex-direction:column;gap:6px">
+            <span class="field-label">Mode de traitement</span>
+            <div class="mode-chips">
+              <button class="mode-chip active fill" onclick="setMode(this,'fill')">Fill</button>
+              <button class="mode-chip line" onclick="setMode(this,'line')">Line</button>
+              <button class="mode-chip cut" onclick="setMode(this,'cut')">Cut</button>
+            </div>
+          </div>
+
+          <div class="acc-sep"></div>
+
+          <!-- Puissance -->
+          <div class="slider-field">
+            <div class="slider-top">
+              <span class="slider-name">Puissance</span>
+              <span class="slider-val" id="val-power">75%</span>
+            </div>
+            <input type="range" class="s-power" min="0" max="100" value="75"
+              style="--p:75%"
+              oninput="updateSlider(this,'val-power',this.value+'%')"/>
+          </div>
+
+          <!-- Vitesse -->
+          <div class="slider-field">
+            <div class="slider-top">
+              <span class="slider-name">Vitesse</span>
+              <span class="slider-val" id="val-speed">3000 mm/min</span>
+            </div>
+            <input type="range" class="s-speed" min="100" max="10000" value="3000"
+              style="--p:30%"
+              oninput="updateSlider(this,'val-speed',this.value+' mm/min')"/>
+          </div>
+
+          <!-- Fréquence -->
+          <div class="slider-field">
+            <div class="slider-top">
+              <span class="slider-name">Fréquence</span>
+              <span class="slider-val" id="val-freq">20 kHz</span>
+            </div>
+            <input type="range" class="s-freq" min="1" max="100" value="20"
+              style="--p:20%"
+              oninput="updateSlider(this,'val-freq',this.value+' kHz')"/>
+          </div>
+
+          <div class="acc-sep"></div>
+
+          <!-- Passes -->
+          <div class="field-row">
+            <span class="field-label">Passes</span>
+            <div class="passes-row" style="flex:1">
+              <button class="pass-btn" onclick="changePasses(-1)">−</button>
+              <span class="pass-count" id="pass-count">1</span>
+              <button class="pass-btn" onclick="changePasses(1)">＋</button>
+            </div>
+          </div>
+
+          <!-- Intervalle -->
+          <div class="field-row">
+            <span class="field-label">Intervalle</span>
+            <input class="field-input" type="number" value="0.1" step="0.05"/>
+            <span class="field-unit">mm</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GCode preview + envoi -->
+    <div class="gcode-section">
+      <div class="gcode-header">
+        <span class="gcode-title">Aperçu GCode</span>
+        <div class="gcode-stats">
+          <div class="gcode-stat"><span class="stat-val" id="stat-lines">2 847</span><span class="stat-lbl">lignes</span></div>
+          <div class="gcode-stat"><span class="stat-val" id="stat-time">14:23</span><span class="stat-lbl">durée</span></div>
+          <div class="gcode-stat"><span class="stat-val" id="stat-dist">48.2m</span><span class="stat-lbl">dist.</span></div>
+        </div>
+      </div>
+      <div class="gcode-box">
+        <div class="gc-line"><span class="gc-n">1</span><span class="gc-comment">; GRBLDeck Slicer — généré le 2026-03-08</span></div>
+        <div class="gc-line"><span class="gc-n">2</span><span class="gc-comment">; Machine: Laser Pro 40W — Bois 3mm</span></div>
+        <div class="gc-line"><span class="gc-n">3</span><span class="gc-cmd">G21</span><span class="gc-arg"></span><span class="gc-comment">; mm</span></div>
+        <div class="gc-line"><span class="gc-n">4</span><span class="gc-cmd">G90</span><span class="gc-arg"></span><span class="gc-comment">; absolu</span></div>
+        <div class="gc-line"><span class="gc-n">5</span><span class="gc-cmd">M3</span><span class="gc-arg"> S0</span><span class="gc-comment">; laser ON</span></div>
+        <div class="gc-line gc-highlight"><span class="gc-n">6</span><span class="gc-cmd">G0</span><span class="gc-arg"> X40.00 Y30.00</span></div>
+        <div class="gc-line gc-highlight"><span class="gc-n">7</span><span class="gc-cmd">M3</span><span class="gc-arg"> S191</span><span class="gc-comment">; 75%</span></div>
+        <div class="gc-line"><span class="gc-n">8</span><span class="gc-cmd">G1</span><span class="gc-arg"> X160.00 Y30.00 F3000</span></div>
+        <div class="gc-line"><span class="gc-n">9</span><span class="gc-cmd">G1</span><span class="gc-arg"> X160.00 Y110.00</span></div>
+        <div class="gc-line"><span class="gc-n">10</span><span class="gc-cmd">G1</span><span class="gc-arg"> X40.00 Y110.00</span></div>
+        <div class="gc-line"><span class="gc-n">…</span><span class="gc-comment">  2837 lignes supplémentaires</span></div>
+      </div>
+
+      <!-- Envoi -->
+      <div class="send-panel">
+        <div class="send-target">
+          <div class="send-target-dot"></div>
+          <div class="send-target-info">
+            <div class="send-target-name">GRBLDeck — Laser Pro</div>
+            <div class="send-target-url">http://192.168.1.42:8000</div>
+          </div>
+          <span style="color:var(--txt-2);font-size:11px">✎</span>
+        </div>
+        <button class="btn-send-full" onclick="sendToGRBLDeck()">
+          ▶ Envoyer vers GRBLDeck
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ STATUSBAR ═══════════ -->
+<div id="statusbar">
+  <div class="sb-item"><div class="sb-dot ok"></div> GRBLDeck connecté</div>
+  <div class="sb-sep"></div>
+  <div class="sb-item" id="sb-coords">X: 0.000  Y: 0.000</div>
+  <div class="sb-sep"></div>
+  <div class="sb-item" id="sb-sel">Sélection: logo_entreprise.svg</div>
+  <div class="sb-right">
+    <div class="sb-item">3 objets · 3 couches</div>
+    <div class="sb-sep"></div>
+    <div class="sb-item">Zoom: <span id="sb-zoom">100%</span></div>
+    <div class="sb-sep"></div>
+    <div class="sb-item">Mode: Laser</div>
+  </div>
+</div>
+
+<!-- ═══════════ CONTEXT MENU ═══════════ -->
+<div id="ctx-menu">
+  <div class="ctx-item" onclick="hideCtx()"><span class="ctx-icon">⧉</span> Dupliquer <span class="ctx-ks">Ctrl+D</span></div>
+  <div class="ctx-item" onclick="hideCtx()"><span class="ctx-icon">✂</span> Couper <span class="ctx-ks">Ctrl+X</span></div>
+  <div class="ctx-item" onclick="hideCtx()"><span class="ctx-icon">📋</span> Copier <span class="ctx-ks">Ctrl+C</span></div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="hideCtx()"><span class="ctx-icon">⬡</span> Éditer les nœuds</div>
+  <div class="ctx-item" onclick="hideCtx()"><span class="ctx-icon">⊞</span> Aligner/Distribuer</div>
+  <div class="ctx-item" onclick="hideCtx()"><span class="ctx-icon">🏷</span> Assigner couche</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="hideCtx()"><span class="ctx-icon">⬆</span> Premier plan</div>
+  <div class="ctx-item" onclick="hideCtx()"><span class="ctx-icon">⬇</span> Arrière-plan</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item danger" onclick="hideCtx()"><span class="ctx-icon">🗑</span> Supprimer <span class="ctx-ks">Del</span></div>
+</div>
+
+<!-- ═══════════ JAVASCRIPT ═══════════ -->
+<script>
+/* ─── FABRIC.JS INIT ─── */
+const CANVAS_W_MM = 600, CANVAS_H_MM = 400;
+const PX_PER_MM = 1.5;
+const BED_W = CANVAS_W_MM * PX_PER_MM;
+const BED_H = CANVAS_H_MM * PX_PER_MM;
+
+const canvas = new fabric.Canvas('main-canvas', {
+  width: BED_W,
+  height: BED_H,
+  backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--workbed-bg').trim() || '#1E1F22',
+  selection: true,
+  preserveObjectStacking: true,
+});
+
+/* Lit de travail (rectangle de référence) */
+const bed = new fabric.Rect({
+  left: 0, top: 0,
+  width: BED_W, height: BED_H,
+  fill: document.documentElement.dataset.theme === 'dark' ? '#1E1F22' : '#F8F8FA',
+  stroke: '#E8590C',
+  strokeWidth: 1.5,
+  selectable: false,
+  evented: false,
+  rx: 2, ry: 2,
+});
+canvas.add(bed);
+canvas.sendToBack(bed);
+
+/* Grille légère sur le canvas */
+function drawGrid() {
+  const spacing = 10 * PX_PER_MM; // 10mm
+  const gridColor = document.documentElement.dataset.theme === 'dark'
+    ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)';
+  const gridColor2 = document.documentElement.dataset.theme === 'dark'
+    ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.09)';
+
+  // Supprimer ancienne grille
+  canvas.getObjects().filter(o => o.isGrid).forEach(o => canvas.remove(o));
+
+  for (let x = 0; x <= BED_W; x += spacing) {
+    const isMajor = Math.round(x / spacing) % 5 === 0;
+    const line = new fabric.Line([x, 0, x, BED_H], {
+      stroke: isMajor ? gridColor2 : gridColor,
+      strokeWidth: 1,
+      selectable: false, evented: false, isGrid: true,
+    });
+    canvas.add(line);
+    canvas.sendToBack(line);
+  }
+  for (let y = 0; y <= BED_H; y += spacing) {
+    const isMajor = Math.round(y / spacing) % 5 === 0;
+    const line = new fabric.Line([0, y, BED_W, y], {
+      stroke: isMajor ? gridColor2 : gridColor,
+      strokeWidth: 1,
+      selectable: false, evented: false, isGrid: true,
+    });
+    canvas.add(line);
+    canvas.sendToBack(line);
+  }
+  canvas.sendToBack(bed);
+  canvas.renderAll();
+}
+drawGrid();
+
+/* Objets de démonstration */
+// Rect simulant une boite DXF
+const rect1 = new fabric.Rect({
+  left: 60, top: 80, width: 180, height: 120,
+  fill: 'rgba(232,89,12,0.08)',
+  stroke: '#E8590C', strokeWidth: 1.5,
+  rx: 2, ry: 2,
+});
+
+// Texte gravure
+const text1 = new fabric.Text('Gravure Logo', {
+  left: 60, top: 220,
+  fontSize: 24,
+  fill: '#0BBFA8',
+  fontFamily: 'DM Sans, sans-serif',
+  fontWeight: '600',
+});
+
+// Ellipse déco
+const ellipse1 = new fabric.Ellipse({
+  left: 320, top: 100,
+  rx: 60, ry: 40,
+  fill: 'rgba(11,191,168,0.08)',
+  stroke: '#0BBFA8', strokeWidth: 1.5,
+});
+
+canvas.add(rect1, text1, ellipse1);
+canvas.setActiveObject(rect1);
+canvas.renderAll();
+
+/* ─── ZOOM ─── */
+let zoomLevel = 1.0;
+
+function updateZoomDisplay() {
+  const pct = Math.round(zoomLevel * 100) + '%';
+  document.getElementById('zoom-display').textContent = pct;
+  document.getElementById('sb-zoom').textContent = pct;
+}
+
+function zoomIn()  { zoomLevel = Math.min(zoomLevel * 1.2, 8); canvas.setZoom(zoomLevel); updateZoomDisplay(); }
+function zoomOut() { zoomLevel = Math.max(zoomLevel / 1.2, 0.1); canvas.setZoom(zoomLevel); updateZoomDisplay(); }
+function resetZoom() { zoomLevel = 1; canvas.setZoom(1); canvas.viewportTransform = [1,0,0,1,0,0]; canvas.renderAll(); updateZoomDisplay(); }
+
+function fitView() {
+  const vw = document.getElementById('canvas-wrap').clientWidth - 60;
+  const vh = document.getElementById('canvas-wrap').clientHeight - 60;
+  const z = Math.min(vw / BED_W, vh / BED_H, 1);
+  zoomLevel = z;
+  canvas.setZoom(z);
+  canvas.viewportTransform = [z, 0, 0, z,
+    (vw - BED_W * z) / 2 + 30,
+    (vh - BED_H * z) / 2 + 30];
+  canvas.renderAll();
+  updateZoomDisplay();
+}
+
+// Zoom molette
+canvas.on('mouse:wheel', function(opt) {
+  const delta = opt.e.deltaY;
+  let zoom = canvas.getZoom();
+  zoom *= delta > 0 ? 0.9 : 1.1;
+  zoom = Math.max(0.1, Math.min(8, zoom));
+  canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
+  zoomLevel = zoom;
+  updateZoomDisplay();
+  opt.e.preventDefault();
+  opt.e.stopPropagation();
+});
+
+// Pan avec espace + drag
+let isPanning = false, lastPt = null;
+canvas.on('mouse:down', e => {
+  if (currentTool === 'pan' || e.e.altKey) {
+    isPanning = true;
+    lastPt = { x: e.e.clientX, y: e.e.clientY };
+    canvas.setCursor('grabbing');
+  }
+});
+canvas.on('mouse:move', e => {
+  if (isPanning && lastPt) {
+    const dx = e.e.clientX - lastPt.x;
+    const dy = e.e.clientY - lastPt.y;
+    const vpt = canvas.viewportTransform;
+    vpt[4] += dx; vpt[5] += dy;
+    canvas.renderAll();
+    lastPt = { x: e.e.clientX, y: e.e.clientY };
+  }
+  // Coordonnées dans status bar
+  const pt = canvas.getPointer(e.e);
+  const xMm = (pt.x / PX_PER_MM).toFixed(1);
+  const yMm = (pt.y / PX_PER_MM).toFixed(1);
+  document.getElementById('sb-coords').textContent = `X: ${xMm}  Y: ${yMm} mm`;
+});
+canvas.on('mouse:up', () => { isPanning = false; lastPt = null; });
+
+/* ─── SELECTION ─── */
+canvas.on('selection:created', updateSelInfo);
+canvas.on('selection:updated', updateSelInfo);
+canvas.on('selection:cleared', () => {
+  document.getElementById('sb-sel').textContent = 'Aucune sélection';
+});
+
+function updateSelInfo() {
+  const obj = canvas.getActiveObject();
+  if (!obj) return;
+  const x = (obj.left / PX_PER_MM).toFixed(2);
+  const y = (obj.top / PX_PER_MM).toFixed(2);
+  const w = ((obj.width * (obj.scaleX || 1)) / PX_PER_MM).toFixed(2);
+  const h = ((obj.height * (obj.scaleY || 1)) / PX_PER_MM).toFixed(2);
+  document.getElementById('inp-x').value = x;
+  document.getElementById('inp-y').value = y;
+  document.getElementById('inp-w').value = w;
+  document.getElementById('inp-h').value = h;
+  document.getElementById('inp-r').value = (obj.angle || 0).toFixed(1);
+  document.getElementById('sb-sel').textContent = `Sélection: ${w}×${h} mm`;
+}
+
+/* ─── OUTILS ─── */
+let currentTool = 'select';
+let isDrawing = false, drawObj = null, startPt = null;
+
+function setTool(t, btn) {
+  currentTool = t;
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  if (t === 'select') {
+    canvas.isDrawingMode = false;
+    canvas.selection = true;
+    canvas.defaultCursor = 'default';
+    canvas.getObjects().forEach(o => o.selectable = (o !== bed && !o.isGrid));
+  } else {
+    canvas.selection = false;
+    canvas.isDrawingMode = false;
+    canvas.defaultCursor = 'crosshair';
+    canvas.getObjects().forEach(o => o.selectable = false);
+    canvas.discardActiveObject();
+    canvas.renderAll();
+  }
+}
+
+// Dessin formes
+canvas.on('mouse:down', e => {
+  if (['rect','circle','line'].includes(currentTool)) {
+    isDrawing = true;
+    startPt = canvas.getPointer(e.e);
+    const color = currentTool === 'circle' ? '#0BBFA8' : '#E8590C';
+
+    if (currentTool === 'rect') {
+      drawObj = new fabric.Rect({
+        left: startPt.x, top: startPt.y, width: 0, height: 0,
+        fill: `${color}18`, stroke: color, strokeWidth: 1.5,
+        selectable: false,
+      });
+    } else if (currentTool === 'circle') {
+      drawObj = new fabric.Ellipse({
+        left: startPt.x, top: startPt.y, rx: 0, ry: 0,
+        fill: `${color}18`, stroke: color, strokeWidth: 1.5,
+        selectable: false,
+      });
+    } else if (currentTool === 'line') {
+      drawObj = new fabric.Line([startPt.x, startPt.y, startPt.x, startPt.y], {
+        stroke: color, strokeWidth: 2,
+        selectable: false,
+      });
+    }
+    canvas.add(drawObj);
+  }
+});
+
+canvas.on('mouse:move', e => {
+  if (!isDrawing || !drawObj) return;
+  const pt = canvas.getPointer(e.e);
+  const dx = pt.x - startPt.x, dy = pt.y - startPt.y;
+
+  if (currentTool === 'rect') {
+    drawObj.set({
+      left: Math.min(pt.x, startPt.x),
+      top: Math.min(pt.y, startPt.y),
+      width: Math.abs(dx),
+      height: Math.abs(dy),
+    });
+  } else if (currentTool === 'circle') {
+    drawObj.set({
+      left: Math.min(pt.x, startPt.x),
+      top: Math.min(pt.y, startPt.y),
+      rx: Math.abs(dx) / 2,
+      ry: Math.abs(dy) / 2,
+    });
+  } else if (currentTool === 'line') {
+    drawObj.set({ x2: pt.x, y2: pt.y });
+  }
+  canvas.renderAll();
+});
+
+canvas.on('mouse:up', () => {
+  if (isDrawing && drawObj) {
+    drawObj.set({ selectable: true });
+    canvas.setActiveObject(drawObj);
+    setTool('select', document.getElementById('tool-select'));
+  }
+  isDrawing = false;
+  drawObj = null;
+});
+
+// Texte
+canvas.on('mouse:dblclick', e => {
+  if (currentTool === 'text') {
+    const pt = canvas.getPointer(e.e);
+    const t = new fabric.IText('Texte', {
+      left: pt.x, top: pt.y,
+      fontSize: 20,
+      fill: '#E8590C',
+      fontFamily: 'DM Sans, sans-serif',
+    });
+    canvas.add(t);
+    canvas.setActiveObject(t);
+    t.enterEditing();
+    setTool('select', document.getElementById('tool-select'));
+  }
+});
+
+/* ─── CONTEXT MENU ─── */
+canvas.on('mouse:down', e => {
+  if (e.button === 3 || e.e.button === 2) {
+    e.e.preventDefault();
+    showCtx(e.e.clientX, e.e.clientY);
+  }
+});
+document.addEventListener('contextmenu', e => {
+  const wrap = document.getElementById('canvas-wrap');
+  if (wrap.contains(e.target)) { e.preventDefault(); showCtx(e.clientX, e.clientY); }
+});
+
+function showCtx(x, y) {
+  const m = document.getElementById('ctx-menu');
+  m.style.display = 'block';
+  m.style.left = x + 'px';
+  m.style.top = y + 'px';
+}
+function hideCtx() { document.getElementById('ctx-menu').style.display = 'none'; }
+document.addEventListener('click', hideCtx);
+
+/* ─── KEYBOARD ─── */
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    const obj = canvas.getActiveObject();
+    if (obj && obj !== bed && !obj.isGrid) {
+      canvas.remove(obj);
+      canvas.discardActiveObject();
+      canvas.renderAll();
+    }
+  }
+  if (e.key === 'Escape') setTool('select', document.getElementById('tool-select'));
+  if (e.ctrlKey && e.key === 'z') canvas.undo ? canvas.undo() : null;
+  if (e.key === 'v') setTool('select', document.getElementById('tool-select'));
+  if (e.key === 'r') setTool('rect', null);
+  if (e.key === 'c') setTool('circle', null);
+  if (e.key === 't') setTool('text', null);
+  if (e.key === '+') zoomIn();
+  if (e.key === '-') zoomOut();
+});
+
+/* ─── UI INTERACTIONS ─── */
+function setTab(btn) {
+  document.querySelectorAll('.tb-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function toggleAcc(section) {
+  section.classList.toggle('open');
+}
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.dataset.theme === 'dark';
+  html.dataset.theme = isDark ? 'light' : 'dark';
+  document.querySelector('.theme-toggle').textContent = isDark ? '☀️' : '🌙';
+
+  // Mettre à jour le canvas
+  const bg = isDark ? '#F8F8FA' : '#1E1F22';
+  bed.set({ fill: bg });
+  canvas.backgroundColor = isDark ? '#E4E4E8' : '#141517';
+  drawGrid();
+  canvas.renderAll();
+}
+
+function selectObj(item) {
+  document.querySelectorAll('.obj-item').forEach(i => i.classList.remove('selected'));
+  item.classList.add('selected');
+}
+
+function selectLayer(item) {
+  document.querySelectorAll('.layer-item').forEach(i => i.classList.remove('active'));
+  item.classList.add('active');
+}
+
+function setMode(btn, mode) {
+  btn.closest('.mode-chips').querySelectorAll('.mode-chip').forEach(b => {
+    b.classList.remove('active', 'fill', 'line', 'cut');
+  });
+  btn.classList.add('active', mode);
+}
+
+function selectMat(btn, mat) {
+  btn.closest('.mat-presets').querySelectorAll('.mat-chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+let passes = 1;
+function changePasses(d) {
+  passes = Math.max(1, Math.min(10, passes + d));
+  document.getElementById('pass-count').textContent = passes;
+}
+
+function updateSlider(el, valId, display) {
+  document.getElementById(valId).textContent = display;
+  const pct = ((el.value - el.min) / (el.max - el.min) * 100).toFixed(1) + '%';
+  el.style.setProperty('--p', pct);
+}
+
+function setView(mode, btn) {
+  document.querySelectorAll('.view-fab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function updateCoord() {
+  const obj = canvas.getActiveObject();
+  if (!obj) return;
+  obj.set({
+    left: parseFloat(document.getElementById('inp-x').value) * PX_PER_MM,
+    top:  parseFloat(document.getElementById('inp-y').value) * PX_PER_MM,
+    scaleX: (parseFloat(document.getElementById('inp-w').value) * PX_PER_MM) / obj.width,
+    scaleY: (parseFloat(document.getElementById('inp-h').value) * PX_PER_MM) / obj.height,
+    angle: parseFloat(document.getElementById('inp-r').value),
+  });
+  canvas.renderAll();
+}
+
+function toggleLock(btn) {
+  btn.textContent = btn.textContent === '🔒' ? '🔓' : '🔒';
+}
+
+function generateGcode() {
+  // Simulation génération
+  const lines = Math.floor(Math.random() * 3000) + 1000;
+  const mins = Math.floor(Math.random() * 20) + 5;
+  const secs = Math.floor(Math.random() * 60);
+  const dist = (Math.random() * 60 + 20).toFixed(1);
+  document.getElementById('stat-lines').textContent = lines.toLocaleString();
+  document.getElementById('stat-time').textContent = `${mins}:${secs.toString().padStart(2,'0')}`;
+  document.getElementById('stat-dist').textContent = `${dist}m`;
+
+  // Flash accent sur le bouton
+  const btn = event.target;
+  btn.style.background = 'var(--teal)';
+  setTimeout(() => btn.style.background = '', 600);
+}
+
+function sendToGRBLDeck() {
+  alert('📡 Envoi vers GRBLDeck...\n\nEn production, cette action POST le GCode vers :\nhttp://192.168.1.42:8000/api/files/upload\n\npuis démarre le job via :\nPOST /api/machine/run');
+}
+
+function importFile() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.svg,.dxf,.png,.jpg,.jpeg,.pdf';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        fabric.Image.fromURL(ev.target.result, img => {
+          img.scaleToWidth(Math.min(BED_W * 0.4, img.width));
+          img.set({ left: 60, top: 60 });
+          canvas.add(img);
+          canvas.setActiveObject(img);
+          canvas.renderAll();
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  input.click();
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.querySelector('.drag-overlay').classList.remove('show');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      fabric.Image.fromURL(ev.target.result, img => {
+        const pt = canvas.getPointer(e);
+        img.scaleToWidth(Math.min(BED_W * 0.4, img.width));
+        img.set({ left: pt.x || 60, top: pt.y || 60 });
+        canvas.add(img);
+        canvas.setActiveObject(img);
+        canvas.renderAll();
+      });
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+function showMachinePicker() {
+  alert('Sélecteur de machine à venir\n\nCette UI listira les machines GRBLDeck découvertes sur le réseau via http://[ip]:8000/api/machine/info');
+}
+
+// Init
+fitView();
+setTimeout(fitView, 100);
+</script>
+</body>
+</html>
