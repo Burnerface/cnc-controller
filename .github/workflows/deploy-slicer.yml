@@ -11,32 +11,18 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.LXC_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.LXC_HOST }} >> ~/.ssh/known_hosts
-
-      - name: Copier les fichiers
-        run: |
-          scp -i ~/.ssh/deploy_key -r \
-            slicer/ \
-            docker-compose.yml \
-            docker@${{ secrets.LXC_HOST }}:${{ secrets.LXC_PROJECT_PATH }}/
-
       - name: Build et restart
         run: |
-          ssh -i ~/.ssh/deploy_key docker@${{ secrets.LXC_HOST }} \
-            "cd ${{ secrets.LXC_PROJECT_PATH }} && docker compose build slicer && docker compose up -d slicer"
+          cd /data/compose/33
+          docker compose build slicer
+          docker compose up -d slicer
 
       - name: Health check
         run: |
           sleep 5
-          ssh -i ~/.ssh/deploy_key docker@${{ secrets.LXC_HOST }} \
-            "curl -sf http://localhost:5174/health && echo '✅ Slicer OK'"
+          curl -sf http://localhost:5174/health && echo "Slicer OK"
