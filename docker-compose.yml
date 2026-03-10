@@ -23,3 +23,12 @@ services:
       - "5173:80"
     depends_on:
       - cnc-backend
+
+  slicer:
+    build: ./slicer
+    container_name: cnc-slicer
+    restart: unless-stopped
+    ports:
+      - "5174:80"
+    depends_on:
+      - cnc-backend
